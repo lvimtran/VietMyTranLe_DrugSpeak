@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { drugData, drugCategory } from "../../resources/resource";
 
-export default function Category({}) {
+export default function Category({ navigation }) {
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -21,7 +21,15 @@ export default function Category({}) {
   }, []);
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.item}>
+    <TouchableOpacity
+      style={styles.item}
+      onPress={() =>
+        navigation.navigate("DrugList", {
+          categoryId: item.id,
+          categoryName: item.name,
+        })
+      }
+    >
       <Text style={styles.name}>
         {item.name} ({item.count})
       </Text>
@@ -45,14 +53,9 @@ const styles = StyleSheet.create({
   title: {
     textAlign: "center",
     fontSize: 22,
-    fontWeight: 700,
+    fontWeight: "700",
     paddingVertical: 10,
   },
-  item: {
-    padding: 20,
-    backgroundColor: "#fff",
-    margin: 12,
-    borderRadius: 10,
-  },
+  item: { padding: 20, backgroundColor: "#fff", margin: 12, borderRadius: 10 },
   name: { fontSize: 16 },
 });
