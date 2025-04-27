@@ -17,7 +17,10 @@ export default function DrugList({ route, navigation }) {
   }, [categoryId]);
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.item}>
+    <TouchableOpacity
+      style={styles.item}
+      onPress={() => navigation.navigate("DrugDetail", { drug: item })}
+    >
       <Text style={styles.name}>{item.name}</Text>
     </TouchableOpacity>
   );
@@ -34,7 +37,20 @@ export default function DrugList({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-  item: { padding: 12, borderBottomWidth: 1, borderColor: "#eee" },
-  name: { fontSize: 16 },
+  container: {
+    flex: 1,
+    padding: 30,
+    backgroundColor: "#eeeeee",
+  },
+
+  item: {
+    padding: 20,
+    backgroundColor: "#fff",
+    margin: 12,
+    borderRadius: 10,
+  },
+
+  name: {
+    fontSize: 16,
+  },
 });
