@@ -1,8 +1,8 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { learningSlice } from "./learningSlice";
+import learningReducer from "./learningSlice";
 
 export const store = configureStore({
   reducer: {
-    learning: learningSlice,
+    learning: learningReducer,
   },
 });

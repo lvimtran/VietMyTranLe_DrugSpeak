@@ -9,9 +9,24 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import Icon from "react-native-vector-icons/Ionicons";
 import { drugCategory } from "../../resources/resource";
+import { useDispatch, useSelector } from "react-redux";
+import { addToLearningList } from "../redux/learningSlice";
 
 export default function DrugDetailScreen({ route }) {
   const { drug } = route.params;
+  const dispatch = useDispatch();
+
+  const currentLearning = useSelector(
+    (state) => state.learning.currentLearning
+  );
+  const finishedLearning = useSelector((state) => state.learning.finished);
+  const isInLearningList =
+    currentLearning.some((item) => item.id === drug.id) ||
+    finishedLearning.some((item) => item.id === drug.id);
+
+  const handleAddToLearningList = () => {
+    dispatch(addToLearningList(drug));
+  };
 
   const [speeds, setSpeeds] = useState(
     drug.sounds.reduce((acc, { gender }) => {
@@ -70,9 +85,14 @@ export default function DrugDetailScreen({ route }) {
       ))}
 
       {/* STUDY button */}
-      <TouchableOpacity style={styles.studyButton}>
-        <Text style={styles.studyButtonText}>STUDY</Text>
-      </TouchableOpacity>
+      {!isInLearningList && (
+        <TouchableOpacity
+          style={styles.studyButton}
+          onPress={handleAddToLearningList}
+        >
+          <Text style={styles.studyButtonText}>STUDY</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

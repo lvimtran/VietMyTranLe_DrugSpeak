@@ -1,11 +1,13 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-export const learningSlice = createSlice({
+const initialState = {
+  currentLearning: [],
+  finished: [],
+};
+
+const learningSlice = createSlice({
   name: "learning",
-  initialState: {
-    currentLearning: [],
-    finished: [],
-  },
+  initialState,
   reducers: {
     addToLearningList: (state, action) => {
       const drug = action.payload;
