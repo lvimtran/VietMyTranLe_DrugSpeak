@@ -62,7 +62,7 @@ export default function Learning({ route, navigation }) {
                 style={styles.picker}
                 itemStyle={styles.pickerItem}
                 onValueChange={(val) =>
-                  setSpeeds((prev) => ({ ...prev, [gender]: val }))
+                  setSpeed((prev) => ({ ...prev, [gender]: val }))
                 }
                 prompt="Speed"
               >
