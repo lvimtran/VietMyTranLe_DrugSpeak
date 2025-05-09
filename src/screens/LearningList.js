@@ -9,7 +9,7 @@ import {
 import { useSelector } from "react-redux";
 import Icon from "react-native-vector-icons/Ionicons";
 
-export default function LearningList() {
+export default function LearningList({ navigation }) {
   const currentLearning = useSelector(
     (state) => state.learning.currentLearning
   );
@@ -56,7 +56,14 @@ export default function LearningList() {
   );
 
   const renderDrugItem = ({ item, section }) => (
-    <TouchableOpacity style={styles.drugItem}>
+    <TouchableOpacity
+      style={styles.drugItem}
+      onPress={() => {
+        if (section === "current") {
+          navigation.navigate("Learning", { drug: item });
+        }
+      }}
+    >
       <Text style={styles.drugName}>{item.name}</Text>
     </TouchableOpacity>
   );
