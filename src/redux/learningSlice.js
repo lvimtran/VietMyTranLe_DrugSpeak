@@ -20,28 +20,8 @@ const learningSlice = createSlice({
         state.currentLearning.push(drug);
       }
     },
-    finishLearning: (state, action) => {
-      const drugId = action.payload;
-      const drugIndex = state.currentLearning.findIndex(
-        (drug) => drug.id === drugId
-      );
-
-      if (drugIndex !== -1) {
-        const drug = state.currentLearning[drugIndex];
-        state.currentLearning.splice(drugIndex, 1);
-        state.finished.push(drug);
-      }
-    },
-    removeDrug: (state, action) => {
-      const drugId = action.payload;
-      state.currentLearning = state.currentLearning.filter(
-        (drug) => drug.id !== drugId
-      );
-      state.finished = state.finished.filter((drug) => drug.id !== drugId);
-    },
   },
 });
 
-export const { addToLearningList, finishLearning, removeDrug } =
-  learningSlice.actions;
+export const { addToLearningList } = learningSlice.actions;
 export default learningSlice.reducer;
