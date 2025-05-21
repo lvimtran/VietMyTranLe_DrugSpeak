@@ -13,7 +13,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { addToLearningList } from "../redux/learningSlice";
 import { Audio } from "expo-av";
 
-// Create a mapping of sound file names to their require statements
 const soundFiles = {
   "Ibuprofen - female.wav": require("../../resources/Ibuprofen - female.wav"),
   "Ibuprofen 1 - male.wav": require("../../resources/Ibuprofen 1 - male.wav"),
@@ -92,7 +91,6 @@ export default function DrugDetailScreen({ route }) {
   async function playSound(file, speed) {
     console.log("Loading Sound", file);
 
-    console.log("Loading sound using createAsync");
     const { sound: newSound } = await Audio.Sound.createAsync(
       soundFiles[file],
       {
@@ -102,14 +100,7 @@ export default function DrugDetailScreen({ route }) {
       }
     );
 
-    console.log("Sound loaded successfully, playing...");
     setSound(newSound);
-
-    newSound.setOnPlaybackStatusUpdate((status) => {
-      if (status.didJustFinish) {
-        console.log("Sound finished playing");
-      }
-    });
   }
 
   useEffect(() => {
@@ -118,16 +109,14 @@ export default function DrugDetailScreen({ route }) {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
-        shouldDuckAndroid: true,
       });
     };
 
     setupAudio();
 
-    // Cleanup function
     return () => {
       if (sound) {
-        console.log("Unloading Sound on component unmount");
+        console.log("Unloading Sound");
         sound.unloadAsync();
       }
     };

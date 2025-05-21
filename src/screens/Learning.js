@@ -80,7 +80,6 @@ export default function Learning({ route, navigation }) {
   async function playSound(file, speed) {
     console.log("Loading Sound", file);
 
-    console.log("Loading sound using createAsync");
     const { sound: newSound } = await Audio.Sound.createAsync(
       soundFiles[file],
       {
@@ -90,14 +89,7 @@ export default function Learning({ route, navigation }) {
       }
     );
 
-    console.log("Sound loaded successfully, playing...");
     setSound(newSound);
-
-    newSound.setOnPlaybackStatusUpdate((status) => {
-      if (status.didJustFinish) {
-        console.log("Sound finished playing");
-      }
-    });
   }
 
   useEffect(() => {
@@ -106,16 +98,14 @@ export default function Learning({ route, navigation }) {
       await Audio.setAudioModeAsync({
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
-        shouldDuckAndroid: true,
       });
     };
 
     setupAudio();
 
-    // Cleanup function
     return () => {
       if (sound) {
-        console.log("Unloading Sound on component unmount");
+        console.log("Unloading Sound");
         sound.unloadAsync();
       }
     };
