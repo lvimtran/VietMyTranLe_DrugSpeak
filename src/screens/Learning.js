@@ -61,6 +61,16 @@ const soundFiles = {
   "Prochlorperazine - female.wav": require("../../resources/Prochlorperazine - female.wav"),
 };
 
+function formatDate(date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
 export default function Learning({ route, navigation }) {
   const { drug } = route.params;
   const dispatch = useDispatch();
@@ -92,10 +102,81 @@ export default function Learning({ route, navigation }) {
     setSound(newSound);
   }
 
+  const [recording, setRecording] = useState(null);
+  const [recordings, setRecordings] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
+
+  async function playRecording(uri) {
+    console.log("Playing recording:", uri);
+
+    try {
+      if (sound) {
+        await sound.unloadAsync();
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri },
+        { shouldPlay: true }
+      );
+
+      setSound(newSound);
+    } catch (error) {
+      console.error("Error playing recording:", error);
+      Alert.alert("Error", "Failed to play recording");
+    }
+  }
+
+  async function startRecording() {
+    console.log("Requesting permissions...");
+    const { status } = await Audio.requestPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission", "Permission to access microphone is required!");
+      return;
+    }
+
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+    });
+
+    console.log("Starting recording...");
+    const { recording } = await Audio.Recording.createAsync(
+      Audio.RecordingOptionsPresets.HIGH_QUALITY
+    );
+
+    setRecording(recording);
+    setIsRecording(true);
+    console.log("Recording started");
+  }
+
+  async function stopRecording() {
+    console.log("Stopping recording...");
+    setIsRecording(false);
+    await recording.stopAndUnloadAsync();
+    const uri = recording.getURI();
+    const timestamp = formatDate(new Date());
+
+    setRecordings((prev) => [
+      ...prev,
+      {
+        uri,
+        timestamp,
+      },
+    ]);
+
+    setRecording(null);
+    console.log("Recording stopped and stored at:", uri);
+  }
+
+  function deleteRecording(indexToDelete) {
+    setRecordings((prev) => prev.filter((_, index) => index !== indexToDelete));
+  }
+
   useEffect(() => {
     const setupAudio = async () => {
       console.log("Setting up audio...");
       await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
       });
@@ -103,24 +184,37 @@ export default function Learning({ route, navigation }) {
 
     setupAudio();
 
+    (async () => {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission",
+          "Permission to access microphone is required!"
+        );
+      }
+    })();
+
     return () => {
       if (sound) {
         console.log("Unloading Sound");
         sound.unloadAsync();
+      }
+      if (recording) {
+        console.log("Unloading recording");
+        recording.stopAndUnloadAsync();
       }
     };
   }, []);
 
   return (
     <View style={styles.container}>
-      {/* Drug Information Section (same as in DrugDetail) */}
       <View style={styles.infoSection}>
         <Text style={styles.title}>{drug.name}</Text>
         <Text style={styles.formula}>({drug.molecular_formula})</Text>
         <Text style={styles.categories}>Categories: {categoryNames}</Text>
         <Text style={styles.desc}>{drug.desc}</Text>
 
-        {/* Pronunciation cards */}
+        {/* Pronunciation */}
         {drug.sounds.map(({ gender, file }) => (
           <View key={file} style={styles.card}>
             <View style={styles.cardLeft}>
@@ -145,7 +239,7 @@ export default function Learning({ route, navigation }) {
                 style={styles.picker}
                 itemStyle={styles.pickerItem}
                 onValueChange={(val) =>
-                  setSpeeds((prev) => ({ ...prev, [gender]: val }))
+                  setSpeed((prev) => ({ ...prev, [gender]: val }))
                 }
                 prompt="Speed"
               >
@@ -158,10 +252,48 @@ export default function Learning({ route, navigation }) {
         ))}
       </View>
 
+      {/* Recordings */}
+      {recordings.length > 0 && (
+        <View style={styles.recordingsList}>
+          <Text style={styles.recordingsTitle}>Your Recordings</Text>
+          {recordings.map((item, index) => (
+            <View key={index} style={styles.recordingItem}>
+              <TouchableOpacity
+                style={styles.playButton}
+                onPress={() => playRecording(item.uri)}
+              >
+                <Icon name="play-circle-outline" size={24} color="#007bff" />
+              </TouchableOpacity>
+
+              <View style={styles.recordingInfo}>
+                <Text style={styles.timestampText}>{item.timestamp}</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => deleteRecording(index)}
+              >
+                <Icon name="trash-outline" size={20} color="#dc3545" />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.actionIcon}>
+                <Icon name="document-text-outline" size={20} color="#007bff" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* Hold to Record Button */}
       <View style={styles.recordSection}>
-        <Pressable style={styles.recordButton}>
-          <Text style={styles.recordText}>Hold to Record</Text>
+        <Pressable
+          style={[styles.recordButton, isRecording && styles.recordingActive]}
+          onPressIn={startRecording}
+          onPressOut={stopRecording}
+        >
+          <Text style={styles.recordText}>
+            {isRecording ? "Recording..." : "Hold to Record"}
+          </Text>
         </Pressable>
       </View>
 
@@ -304,5 +436,39 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  recordingActive: {
+    backgroundColor: "#ff6347",
+    transform: [{ scale: 1.05 }],
+  },
+  recordingsList: {
+    marginBottom: 15,
+  },
+  recordingsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  recordingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  playButton: {
+    marginRight: 10,
+  },
+  recordingInfo: {
+    flex: 1,
+  },
+  timestampText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  deleteButton: {
+    padding: 5,
   },
 });
