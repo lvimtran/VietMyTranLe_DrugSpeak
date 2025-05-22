@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Platform,
   Pressable,
+  Alert,
+  ScrollView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Icon from "react-native-vector-icons/Ionicons";
@@ -75,6 +77,11 @@ export default function Learning({ route, navigation }) {
   const { drug } = route.params;
   const dispatch = useDispatch();
   const [sound, setSound] = useState();
+  const [recording, setRecording] = useState(null);
+  const [recordings, setRecordings] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [drugScore, setDrugScore] = useState(drug.score || 0);
 
   const [speed, setSpeed] = useState(
     drug.sounds.reduce((acc, { gender }) => {
@@ -101,10 +108,6 @@ export default function Learning({ route, navigation }) {
 
     setSound(newSound);
   }
-
-  const [recording, setRecording] = useState(null);
-  const [recordings, setRecordings] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
 
   async function playRecording(uri) {
     console.log("Playing recording:", uri);
@@ -161,6 +164,7 @@ export default function Learning({ route, navigation }) {
       {
         uri,
         timestamp,
+        score: "",
       },
     ]);
 
@@ -171,6 +175,34 @@ export default function Learning({ route, navigation }) {
   function deleteRecording(indexToDelete) {
     setRecordings((prev) => prev.filter((_, index) => index !== indexToDelete));
   }
+
+  const evaluateRecording = async (index) => {
+    if (index < 0 || index >= recordings.length) return;
+
+    setIsEvaluating(true);
+
+    const score = Math.floor(Math.random() * 101);
+
+    setRecordings((prev) => {
+      const updatedRecordings = [...prev];
+      updatedRecordings[index] = {
+        ...updatedRecordings[index],
+        score,
+      };
+
+      const highestScore = Math.max(
+        ...updatedRecordings.map((rec) => rec.score || 0)
+      );
+
+      if (highestScore > drugScore) {
+        setDrugScore(highestScore);
+      }
+
+      return updatedRecordings;
+    });
+
+    setIsEvaluating(false);
+  };
 
   useEffect(() => {
     const setupAudio = async () => {
@@ -209,103 +241,127 @@ export default function Learning({ route, navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.infoSection}>
-        <Text style={styles.title}>{drug.name}</Text>
+        <Text style={styles.title}>
+          {drug.name} ({drugScore})
+        </Text>
         <Text style={styles.formula}>({drug.molecular_formula})</Text>
         <Text style={styles.categories}>Categories: {categoryNames}</Text>
         <Text style={styles.desc}>{drug.desc}</Text>
-
-        {/* Pronunciation */}
-        {drug.sounds.map(({ gender, file }) => (
-          <View key={file} style={styles.card}>
-            <View style={styles.cardLeft}>
-              <TouchableOpacity onPress={() => playSound(file, speed[gender])}>
-                <Icon name="volume-high-outline" size={20} />
-              </TouchableOpacity>
-              <Text style={styles.soundLabel}>{drug.name}</Text>
-              <Icon
-                name={gender === "male" ? "male-outline" : "female-outline"}
-                size={18}
-                style={[
-                  styles.genderIcon,
-                  gender === "male" ? styles.male : styles.female,
-                ]}
-              />
-            </View>
-
-            <View style={styles.pickerContainer}>
-              <Picker
-                mode={Platform.OS === "android" ? "dropdown" : "dialog"}
-                selectedValue={speed[gender]}
-                style={styles.picker}
-                itemStyle={styles.pickerItem}
-                onValueChange={(val) =>
-                  setSpeed((prev) => ({ ...prev, [gender]: val }))
-                }
-                prompt="Speed"
-              >
-                {["0.5", "1.0", "1.5", "2.0"].map((v) => (
-                  <Picker.Item key={v} label={`${v}×`} value={v} />
-                ))}
-              </Picker>
-            </View>
-          </View>
-        ))}
       </View>
 
-      {/* Recordings */}
-      {recordings.length > 0 && (
-        <View style={styles.recordingsList}>
-          <Text style={styles.recordingsTitle}>Your Recordings</Text>
-          {recordings.map((item, index) => (
-            <View key={index} style={styles.recordingItem}>
-              <TouchableOpacity
-                style={styles.playButton}
-                onPress={() => playRecording(item.uri)}
-              >
-                <Icon name="play-circle-outline" size={24} color="#007bff" />
-              </TouchableOpacity>
+      <View style={styles.contentContainer}>
+        <ScrollView style={styles.scrollArea}>
+          <View style={styles.pronunciationSection}>
+            {drug.sounds.map(({ gender, file }) => (
+              <View key={file} style={styles.card}>
+                <View style={styles.cardLeft}>
+                  <TouchableOpacity
+                    onPress={() => playSound(file, speed[gender])}
+                  >
+                    <Icon name="volume-high-outline" size={20} />
+                  </TouchableOpacity>
+                  <Text style={styles.soundLabel}>{drug.name}</Text>
+                  <Icon
+                    name={gender === "male" ? "male-outline" : "female-outline"}
+                    size={18}
+                    style={[
+                      styles.genderIcon,
+                      gender === "male" ? styles.male : styles.female,
+                    ]}
+                  />
+                </View>
 
-              <View style={styles.recordingInfo}>
-                <Text style={styles.timestampText}>{item.timestamp}</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    mode={Platform.OS === "android" ? "dropdown" : "dialog"}
+                    selectedValue={speed[gender]}
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
+                    onValueChange={(val) =>
+                      setSpeed((prev) => ({ ...prev, [gender]: val }))
+                    }
+                    prompt="Speed"
+                  >
+                    {["0.5", "1.0", "1.5", "2.0"].map((v) => (
+                      <Picker.Item key={v} label={`${v}×`} value={v} />
+                    ))}
+                  </Picker>
+                </View>
               </View>
+            ))}
+          </View>
 
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => deleteRecording(index)}
-              >
-                <Icon name="trash-outline" size={20} color="#dc3545" />
-              </TouchableOpacity>
+          {recordings.length > 0 && (
+            <View style={styles.recordingsList}>
+              <Text style={styles.recordingsTitle}>Your Recordings</Text>
+              {recordings.map((item, index) => (
+                <View key={index} style={styles.recordingItem}>
+                  <TouchableOpacity
+                    style={styles.playButton}
+                    onPress={() => playRecording(item.uri)}
+                  >
+                    <Icon
+                      name="play-circle-outline"
+                      size={24}
+                      color="#007bff"
+                    />
+                  </TouchableOpacity>
 
-              <TouchableOpacity style={styles.actionIcon}>
-                <Icon name="document-text-outline" size={20} color="#007bff" />
-              </TouchableOpacity>
+                  <View style={styles.recordingInfo}>
+                    <Text style={styles.timestampText}>
+                      {item.timestamp} (
+                      {item.score !== undefined ? item.score : 0})
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => deleteRecording(index)}
+                  >
+                    <Icon name="trash-outline" size={20} color="#dc3545" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionIcon}
+                    onPress={() => evaluateRecording(index)}
+                    disabled={isEvaluating}
+                  >
+                    <Icon
+                      name="document-text-outline"
+                      size={20}
+                      color={isEvaluating ? "#cccccc" : "#007bff"}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-      )}
-
-      {/* Hold to Record Button */}
-      <View style={styles.recordSection}>
-        <Pressable
-          style={[styles.recordButton, isRecording && styles.recordingActive]}
-          onPressIn={startRecording}
-          onPressOut={stopRecording}
-        >
-          <Text style={styles.recordText}>
-            {isRecording ? "Recording..." : "Hold to Record"}
-          </Text>
-        </Pressable>
+          )}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
       </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionContainer}>
-        <TouchableOpacity style={[styles.actionButton, styles.finishButton]}>
-          <Text style={styles.actionButtonText}>Finish</Text>
-        </TouchableOpacity>
+      <View style={styles.footerSection}>
+        <View style={styles.recordSection}>
+          <Pressable
+            style={[styles.recordButton, isRecording && styles.recordingActive]}
+            onPressIn={startRecording}
+            onPressOut={stopRecording}
+          >
+            <Text style={styles.recordText}>
+              {isRecording ? "Recording..." : "Hold to Record"}
+            </Text>
+          </Pressable>
+        </View>
 
-        <TouchableOpacity style={[styles.actionButton, styles.removeButton]}>
-          <Text style={styles.actionButtonText}>Remove</Text>
-        </TouchableOpacity>
+        <View style={styles.actionContainer}>
+          <TouchableOpacity style={[styles.actionButton, styles.finishButton]}>
+            <Text style={styles.actionButtonText}>Finish</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.actionButton, styles.removeButton]}>
+            <Text style={styles.actionButtonText}>Remove</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -319,6 +375,23 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     marginBottom: 20,
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  scrollArea: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  footerSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
   },
   title: {
     fontSize: 22,
@@ -342,6 +415,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: "center",
     marginBottom: 14,
+  },
+  pronunciationSection: {
+    marginBottom: 15,
   },
   card: {
     flexDirection: "row",
@@ -393,7 +469,7 @@ const styles = StyleSheet.create({
   },
   recordSection: {
     alignItems: "center",
-    marginVertical: 20,
+    marginVertical: 15,
   },
   recordButton: {
     width: 150,
@@ -417,7 +493,7 @@ const styles = StyleSheet.create({
   actionContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 15,
   },
   actionButton: {
     flex: 1,
@@ -470,5 +546,12 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 5,
+  },
+  actionIcon: {
+    padding: 5,
+    marginLeft: 5,
+  },
+  bottomPadding: {
+    height: 20,
   },
 });
