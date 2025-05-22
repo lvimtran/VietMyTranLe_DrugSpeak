@@ -2,6 +2,7 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { NavigationContainer } from "@react-navigation/native";
+import { Alert } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
 import { Provider, useSelector } from "react-redux";
 import { store } from "./src/redux/store";
@@ -12,6 +13,10 @@ import DrugDetail from "./src/screens/DrugDetail";
 import LearningList from "./src/screens/LearningList";
 import Learning from "./src/screens/Learning";
 import SplashScreen from "./src/screens/SplashScreen";
+import SignIn from "./src/screens/SignIn";
+import SignUp from "./src/screens/SignUp";
+import Profile from "./src/screens/Profile";
+import Community from "./src/screens/Community";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -47,7 +52,7 @@ function LearningStack() {
         options={{ title: "Learning List" }}
       />
       <Stack.Screen
-        name="Learning"
+        name="LearningDetail"
         component={Learning}
         options={({ route }) => ({ title: route.params.drug.name })}
       />
@@ -55,13 +60,32 @@ function LearningStack() {
   );
 }
 
+function ProfileStack() {
+  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
+
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {isLoggedIn ? (
+        <Stack.Screen name="UserProfile" component={Profile} />
+      ) : (
+        <>
+          <Stack.Screen name="SignIn" component={SignIn} />
+          <Stack.Screen name="SignUp" component={SignUp} />
+        </>
+      )}
+    </Stack.Navigator>
+  );
+}
+
 function MyTab() {
+  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
   const currentLearningCount = useSelector(
     (state) => state.learning.currentLearning.length
   );
 
   return (
     <Tab.Navigator
+      initialRouteName={isLoggedIn ? "Drugs" : "Profile"}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
@@ -69,6 +93,10 @@ function MyTab() {
             iconName = focused ? "medkit" : "medkit-outline";
           } else if (route.name === "Learning") {
             iconName = focused ? "school" : "school-outline";
+          } else if (route.name === "Community") {
+            iconName = focused ? "people" : "people-outline";
+          } else if (route.name === "Profile") {
+            iconName = focused ? "person" : "person-outline";
           }
           return <Icon name={iconName} size={size} color={color} />;
         },
@@ -88,6 +116,44 @@ function MyTab() {
           headerShown: false,
           tabBarBadge: currentLearningCount > 0 ? currentLearningCount : null,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (!isLoggedIn) {
+              e.preventDefault();
+              Alert.alert("Access Denied", "Login first to access Learning.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Login",
+                  onPress: () => navigation.navigate("Profile"),
+                },
+              ]);
+            }
+          },
+        })}
+      />
+      <Tab.Screen
+        name="Community"
+        component={Community}
+        options={{ headerShown: false }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (!isLoggedIn) {
+              e.preventDefault();
+              Alert.alert("Access Denied", "Login first to access Community.", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Login",
+                  onPress: () => navigation.navigate("Profile"),
+                },
+              ]);
+            }
+          },
+        })}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileStack}
+        options={{ headerShown: false }}
       />
     </Tab.Navigator>
   );
@@ -97,10 +163,7 @@ export default function App() {
   return (
     <Provider store={store}>
       <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Splash"
-          screenOptions={{ headerShown: false }}
-        >
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Splash" component={SplashScreen} />
           <Stack.Screen name="Main" component={MyTab} />
         </Stack.Navigator>
