@@ -12,6 +12,7 @@ import { useDispatch } from "react-redux";
 import { login } from "../redux/authSlice";
 import Icon from "react-native-vector-icons/Ionicons";
 import AuthAPI from "../services/authApi";
+import { showErrorAlert } from "../utils/errorHandler";
 
 export default function SignIn({ navigation }) {
   const [email, setEmail] = useState("");
@@ -38,21 +39,48 @@ export default function SignIn({ navigation }) {
       email: email.trim().toLowerCase(),
       password: password,
     };
-
     setLoading(true);
 
-    const response = await AuthAPI.signIn(credentials);
+    try {
+      console.log("🔐 Signing in...");
+      const response = await AuthAPI.signIn(credentials);
+      const token = response.token || response.access_token;
 
-    const user = {
-      id: response.user?.id || "1",
-      name: response.user?.name || "User",
-      email: response.user?.email || email,
-      gender: response.user?.gender || "Male",
-      token: response.token,
-    };
+      if (!token) {
+        console.error("❌ No token received from server:", response);
+        throw new Error("Authentication failed - no token received");
+      }
 
-    dispatch(login(user));
-    handleClear();
+      console.log("✅ Token received:", token.substring(0, 20) + "...");
+
+      const user = {
+        id: response.user?.id || "1",
+        name: response.user?.name || response.user?.username || "User",
+        email: response.user?.email || email,
+        gender: response.user?.gender || "Male",
+        token: token,
+      };
+
+      console.log("🔄 Storing user in Redux:", {
+        ...user,
+        token: token.substring(0, 20) + "...",
+      });
+
+      // Store user in Redux
+      dispatch(login(user));
+    } catch (error) {
+      console.error("❌ Login error:", error);
+      if (
+        error.message.includes("fetch") ||
+        error.message.includes("Network")
+      ) {
+        showNetworkErrorAlert();
+      } else {
+        showErrorAlert(error.message || error, "Login Failed");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -125,7 +153,7 @@ export default function SignIn({ navigation }) {
             onPress={handleClear}
             disabled={loading}
           >
-            <Text style={[styles.clearButtonText]}>Clear</Text>
+            <Text style={styles.clearButtonText}>Clear</Text>
           </TouchableOpacity>
         </View>
 
