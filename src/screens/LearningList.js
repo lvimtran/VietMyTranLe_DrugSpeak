@@ -60,7 +60,7 @@ export default function LearningList({ navigation }) {
       style={styles.drugItem}
       onPress={() => {
         if (section === "current") {
-          navigation.navigate("Learning", { drug: item });
+          navigation.navigate("LearningDetail", { drug: item });
         }
       }}
     >
