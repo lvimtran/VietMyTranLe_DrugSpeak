@@ -140,20 +140,6 @@ function MyTab() {
         name="Community"
         component={Community}
         options={{ headerShown: false }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            if (!isLoggedIn) {
-              e.preventDefault();
-              Alert.alert("Access Denied", "Login first to access Community.", [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Login",
-                  onPress: () => navigation.navigate("Profile"),
-                },
-              ]);
-            }
-          },
-        })}
       />
       <Tab.Screen
         name="Profile"
@@ -176,9 +162,9 @@ function AppNavigator() {
     const initializeAuth = async () => {
       try {
         await dispatch(loadUserFromStorage()).unwrap();
-        console.log("✅ User loaded from storage successfully");
+        console.log("User loaded from storage successfully");
       } catch (error) {
-        console.log("ℹ️ No saved user found or token expired");
+        console.log("No saved user found or token expired");
       }
     };
 

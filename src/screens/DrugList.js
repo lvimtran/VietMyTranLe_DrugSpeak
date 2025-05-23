@@ -55,26 +55,36 @@ export default function DrugList({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 30,
-    backgroundColor: "#eeeeee",
+    padding: 24,
+    backgroundColor: "#F0F8FF",
   },
 
   item: {
     padding: 20,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     margin: 12,
-    borderRadius: 10,
+    borderRadius: 16,
+    shadowColor: "#87CEEB",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#E6F3FF",
   },
 
   name: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#2F4F4F",
   },
 
   learningItem: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#E6F3FF",
+    borderColor: "#87CEEB",
   },
 
   learningText: {
-    color: "#777",
+    color: "#4682B4",
   },
 });

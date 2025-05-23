@@ -6,14 +6,18 @@ import {
   TouchableOpacity,
   Platform,
   Pressable,
-  Alert,
   ScrollView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Icon from "react-native-vector-icons/Ionicons";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { drugCategory } from "../../resources/resource";
-import { finishLearning, removeDrug } from "../redux/learningSlice";
+import {
+  finishLearning,
+  removeDrug,
+  updateDrugScore,
+  addToLearningList,
+} from "../redux/learningSlice";
 import { Audio } from "expo-av";
 
 const soundFiles = {
@@ -74,7 +78,7 @@ function formatDate(date) {
 }
 
 export default function Learning({ route, navigation }) {
-  const { drug } = route.params;
+  const { drug, isFinished = false } = route.params;
   const dispatch = useDispatch();
   const [sound, setSound] = useState();
   const [recording, setRecording] = useState(null);
@@ -82,6 +86,9 @@ export default function Learning({ route, navigation }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [drugScore, setDrugScore] = useState(drug.score || 0);
+
+  const isLoading = useSelector((state) => state.learning.isLoading);
+  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
 
   const [speed, setSpeed] = useState(
     drug.sounds.reduce((acc, { gender }) => {
@@ -125,7 +132,6 @@ export default function Learning({ route, navigation }) {
       setSound(newSound);
     } catch (error) {
       console.error("Error playing recording:", error);
-      Alert.alert("Error", "Failed to play recording");
     }
   }
 
@@ -133,7 +139,6 @@ export default function Learning({ route, navigation }) {
     console.log("Requesting permissions...");
     const { status } = await Audio.requestPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission", "Permission to access microphone is required!");
       return;
     }
 
@@ -153,6 +158,8 @@ export default function Learning({ route, navigation }) {
   }
 
   async function stopRecording() {
+    if (!recording) return;
+
     console.log("Stopping recording...");
     setIsRecording(false);
     await recording.stopAndUnloadAsync();
@@ -196,12 +203,59 @@ export default function Learning({ route, navigation }) {
 
       if (highestScore > drugScore) {
         setDrugScore(highestScore);
+        dispatch(
+          updateDrugScore({
+            drugId: drug.id,
+            score: highestScore,
+          })
+        );
       }
 
       return updatedRecordings;
     });
 
     setIsEvaluating(false);
+  };
+
+  const handleFinishLearning = async () => {
+    try {
+      console.log("Finishing learning for drug:", drug.id);
+      const result = await dispatch(finishLearning(drug.id)).unwrap();
+      console.log("Finish learning result:", result);
+      navigation.goBack();
+    } catch (error) {
+      console.error("Error finishing learning:", error);
+    }
+  };
+
+  const handleReviewDrug = async () => {
+    if (!drug || !drug.id) {
+      return;
+    }
+
+    try {
+      console.log("Review drug:", drug.id);
+      await dispatch(removeDrug(drug.id)).unwrap();
+      await dispatch(addToLearningList(drug)).unwrap();
+      navigation.goBack();
+    } catch (error) {
+      console.error("Error review drug:", error);
+    }
+  };
+
+  const handleRemoveDrug = async () => {
+    if (!drug || !drug.id) {
+      return;
+    }
+
+    try {
+      console.log("Removing drug:", drug.id);
+      const result = await dispatch(removeDrug(drug.id)).unwrap();
+      console.log("Remove drug result:", result);
+      navigation.goBack();
+    } catch (error) {
+      console.error("Error removing drug:", error);
+    }
   };
 
   useEffect(() => {
@@ -218,12 +272,6 @@ export default function Learning({ route, navigation }) {
 
     (async () => {
       const { status } = await Audio.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission",
-          "Permission to access microphone is required!"
-        );
-      }
     })();
 
     return () => {
@@ -242,53 +290,59 @@ export default function Learning({ route, navigation }) {
     <View style={styles.container}>
       <View style={styles.infoSection}>
         <Text style={styles.title}>
-          {drug.name} ({drugScore})
+          {drug.name || "Unknown Drug"} ({drugScore})
         </Text>
-        <Text style={styles.formula}>({drug.molecular_formula})</Text>
+        <Text style={styles.formula}>({drug.molecular_formula || "N/A"})</Text>
         <Text style={styles.categories}>Categories: {categoryNames}</Text>
-        <Text style={styles.desc}>{drug.desc}</Text>
+        <Text style={styles.desc}>
+          {drug.desc || "No description available"}
+        </Text>
       </View>
 
       <View style={styles.contentContainer}>
         <ScrollView style={styles.scrollArea}>
           <View style={styles.pronunciationSection}>
-            {drug.sounds.map(({ gender, file }) => (
-              <View key={file} style={styles.card}>
-                <View style={styles.cardLeft}>
-                  <TouchableOpacity
-                    onPress={() => playSound(file, speed[gender])}
-                  >
-                    <Icon name="volume-high-outline" size={20} />
-                  </TouchableOpacity>
-                  <Text style={styles.soundLabel}>{drug.name}</Text>
-                  <Icon
-                    name={gender === "male" ? "male-outline" : "female-outline"}
-                    size={18}
-                    style={[
-                      styles.genderIcon,
-                      gender === "male" ? styles.male : styles.female,
-                    ]}
-                  />
-                </View>
+            {drug.sounds &&
+              Array.isArray(drug.sounds) &&
+              drug.sounds.map(({ gender, file }) => (
+                <View key={file} style={styles.card}>
+                  <View style={styles.cardLeft}>
+                    <TouchableOpacity
+                      onPress={() => playSound(file, speed[gender] || "1.0")}
+                    >
+                      <Icon name="volume-high-outline" size={20} />
+                    </TouchableOpacity>
+                    <Text style={styles.soundLabel}>{drug.name}</Text>
+                    <Icon
+                      name={
+                        gender === "male" ? "male-outline" : "female-outline"
+                      }
+                      size={18}
+                      style={[
+                        styles.genderIcon,
+                        gender === "male" ? styles.male : styles.female,
+                      ]}
+                    />
+                  </View>
 
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    mode={Platform.OS === "android" ? "dropdown" : "dialog"}
-                    selectedValue={speed[gender]}
-                    style={styles.picker}
-                    itemStyle={styles.pickerItem}
-                    onValueChange={(val) =>
-                      setSpeed((prev) => ({ ...prev, [gender]: val }))
-                    }
-                    prompt="Speed"
-                  >
-                    {["0.5", "1.0", "1.5", "2.0"].map((v) => (
-                      <Picker.Item key={v} label={`${v}×`} value={v} />
-                    ))}
-                  </Picker>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      mode={Platform.OS === "android" ? "dropdown" : "dialog"}
+                      selectedValue={speed[gender] || "1.0"}
+                      style={styles.picker}
+                      itemStyle={styles.pickerItem}
+                      onValueChange={(val) =>
+                        setSpeed((prev) => ({ ...prev, [gender]: val }))
+                      }
+                      prompt="Speed"
+                    >
+                      {["0.5", "1.0", "1.5", "2.0"].map((v) => (
+                        <Picker.Item key={v} label={`${v}×`} value={v} />
+                      ))}
+                    </Picker>
+                  </View>
                 </View>
-              </View>
-            ))}
+              ))}
           </View>
 
           {recordings.length > 0 && (
@@ -354,12 +408,51 @@ export default function Learning({ route, navigation }) {
         </View>
 
         <View style={styles.actionContainer}>
-          <TouchableOpacity style={[styles.actionButton, styles.finishButton]}>
-            <Text style={styles.actionButtonText}>Finish</Text>
-          </TouchableOpacity>
+          {isFinished ? (
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.reviewButton,
+                isLoading && styles.buttonDisabled,
+              ]}
+              onPress={handleReviewDrug}
+              disabled={isLoading}
+            >
+              <Icon name="refresh-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>
+                {isLoading ? "Processing..." : "Review"}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.finishButton,
+                isLoading && styles.buttonDisabled,
+              ]}
+              onPress={handleFinishLearning}
+              disabled={isLoading}
+            >
+              <Icon name="checkmark-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.actionButtonText}>
+                {isLoading ? "Processing..." : "Finish"}
+              </Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity style={[styles.actionButton, styles.removeButton]}>
-            <Text style={styles.actionButtonText}>Remove</Text>
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.removeButton,
+              isLoading && styles.buttonDisabled,
+            ]}
+            onPress={handleRemoveDrug}
+            disabled={isLoading}
+          >
+            <Icon name="trash-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.actionButtonText}>
+              {isLoading ? "Processing..." : "Remove"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -415,6 +508,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: "center",
     marginBottom: 14,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#d4edda",
+    borderColor: "#c3e6cb",
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignSelf: "center",
+  },
+  statusText: {
+    fontSize: 12,
+    color: "#155724",
+    fontWeight: "600",
+    marginLeft: 4,
   },
   pronunciationSection: {
     marginBottom: 15,
@@ -501,9 +612,14 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: "center",
     marginHorizontal: 5,
+    flexDirection: "row",
+    justifyContent: "center",
   },
   finishButton: {
     backgroundColor: "#28a745",
+  },
+  reviewButton: {
+    backgroundColor: "#17a2b8",
   },
   removeButton: {
     backgroundColor: "#dc3545",
@@ -512,6 +628,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+    marginLeft: 4,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   recordingActive: {
     backgroundColor: "#ff6347",

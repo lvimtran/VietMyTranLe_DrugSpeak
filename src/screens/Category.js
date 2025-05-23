@@ -49,13 +49,34 @@ export default function Category({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 30, backgroundColor: "#eeeeee" },
+  container: {
+    flex: 1,
+    padding: 24,
+    backgroundColor: "#F0F8FF",
+  },
   title: {
     textAlign: "center",
-    fontSize: 22,
+    fontSize: 32,
     fontWeight: "700",
-    paddingVertical: 10,
+    color: "#4682B4",
+    paddingVertical: 20,
   },
-  item: { padding: 20, backgroundColor: "#fff", margin: 12, borderRadius: 10 },
-  name: { fontSize: 16 },
+  item: {
+    padding: 20,
+    backgroundColor: "#FFFFFF",
+    margin: 12,
+    borderRadius: 16,
+    shadowColor: "#87CEEB",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#E6F3FF",
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#2F4F4F",
+  },
 });

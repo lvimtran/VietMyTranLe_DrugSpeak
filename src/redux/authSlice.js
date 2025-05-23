@@ -9,9 +9,9 @@ const initialState = {
   error: null,
   profileLoading: false,
   profileError: null,
+  shouldClearLearningData: false,
 };
 
-// Load user from storage
 export const loadUserFromStorage = createAsyncThunk(
   "auth/loadUserFromStorage",
   async (_, { rejectWithValue }) => {
@@ -24,7 +24,8 @@ export const loadUserFromStorage = createAsyncThunk(
         const token = tokenString;
         try {
           const profile = await AuthAPI.getProfile(token);
-          return { ...user, token };
+          const userWithToken = { ...user, token };
+          return userWithToken;
         } catch (error) {
           await AsyncStorage.multiRemove(["user", "authToken"]);
           return null;
@@ -37,7 +38,6 @@ export const loadUserFromStorage = createAsyncThunk(
   }
 );
 
-// Refresh user profile
 export const refreshUserProfile = createAsyncThunk(
   "auth/refreshUserProfile",
   async (_, { getState, rejectWithValue }) => {
@@ -55,7 +55,6 @@ export const refreshUserProfile = createAsyncThunk(
   }
 );
 
-// Update user profile
 export const updateUserProfile = createAsyncThunk(
   "auth/updateUserProfile",
   async (profileData, { getState, rejectWithValue }) => {
@@ -76,6 +75,30 @@ export const updateUserProfile = createAsyncThunk(
   }
 );
 
+export const signUpUser = createAsyncThunk(
+  "auth/signUpUser",
+  async (userData, { rejectWithValue }) => {
+    try {
+      const response = await AuthAPI.signUp(userData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const signInUser = createAsyncThunk(
+  "auth/signInUser",
+  async (credentials, { rejectWithValue }) => {
+    try {
+      const response = await AuthAPI.signIn(credentials);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -84,6 +107,7 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isLoggedIn = true;
       state.error = null;
+      state.isLoading = false;
 
       const { token, ...userWithoutToken } = action.payload;
       AsyncStorage.setItem("user", JSON.stringify(userWithoutToken));
@@ -91,13 +115,19 @@ const authSlice = createSlice({
         AsyncStorage.setItem("authToken", token);
       }
     },
-    logout: (state) => {
+    logout: (state, action) => {
       state.user = null;
       state.isLoggedIn = false;
       state.error = null;
       state.profileError = null;
+      state.isLoading = false;
+      state.profileLoading = false;
 
       AsyncStorage.multiRemove(["user", "authToken"]);
+
+      if (action.meta?.clearLearningData !== false) {
+        state.shouldClearLearningData = true;
+      }
     },
     clearError: (state) => {
       state.error = null;
@@ -113,11 +143,29 @@ const authSlice = createSlice({
     setAuthState: (state, action) => {
       state.isLoggedIn = action.payload;
     },
+    clearShouldClearLearningData: (state) => {
+      state.shouldClearLearningData = false;
+    },
+    setLoading: (state, action) => {
+      state.isLoading = action.payload;
+    },
+    setProfileLoading: (state, action) => {
+      state.profileLoading = action.payload;
+    },
   },
 });
 
-export const { login, logout, clearError, updateUserData, setAuthState } =
-  authSlice.actions;
+export const {
+  login,
+  logout,
+  clearError,
+  updateUserData,
+  setAuthState,
+  clearShouldClearLearningData,
+  setLoading,
+  setProfileLoading,
+} = authSlice.actions;
+
 export const selectAuth = (state) => state.auth;
 export const selectUser = (state) => state.auth.user;
 export const selectIsLoggedIn = (state) => state.auth.isLoggedIn;
@@ -126,5 +174,7 @@ export const selectAuthLoading = (state) => state.auth.isLoading;
 export const selectAuthError = (state) => state.auth.error;
 export const selectProfileLoading = (state) => state.auth.profileLoading;
 export const selectProfileError = (state) => state.auth.profileError;
+export const selectShouldClearLearningData = (state) =>
+  state.auth.shouldClearLearningData;
 
 export default authSlice.reducer;

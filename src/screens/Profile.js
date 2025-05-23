@@ -31,16 +31,22 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  const currentLearningCount = useSelector((state) => {
-    try {
-      return state.learning?.currentLearning?.length || 0;
-    } catch {
-      return 0;
-    }
-  });
+  const currentLearning = useSelector(
+    (state) => state.learning.currentLearning || []
+  );
+  const finished = useSelector((state) => state.learning.finished || []);
+  const storedTotalScore = useSelector(
+    (state) => state.learning.totalScore || 0
+  );
 
-  const finishedLearningCount = 0;
-  const totalScore = 0;
+  const currentLearningCount = currentLearning.length;
+  const finishedLearningCount = finished.length;
+  const calculatedTotalScore = [...currentLearning, ...finished].reduce(
+    (total, drug) => total + (drug.score || 0),
+    0
+  );
+
+  const totalScore = Math.max(storedTotalScore, calculatedTotalScore);
 
   const handleSignOut = () => {
     dispatch(logout());
@@ -55,6 +61,7 @@ export default function Profile() {
   const handleConfirm = async () => {
     if (!user?.token) {
       dispatch(logout());
+      return;
     }
 
     if (!newName.trim()) {
@@ -193,7 +200,7 @@ export default function Profile() {
                   style={styles.input}
                   value={newPassword}
                   onChangeText={setNewPassword}
-                  placeholder="Enter new password (leave empty to keep current)"
+                  placeholder="Enter new password"
                   placeholderTextColor="#B0C4DE"
                   secureTextEntry
                   editable={!loading}
@@ -209,9 +216,13 @@ export default function Profile() {
               disabled={loading}
             >
               <View style={styles.loadingContainer}>
-                <Icon name="checkmark" size={20} color="#FFFFFF" />
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Icon name="checkmark" size={20} color="#FFFFFF" />
+                )}
                 <Text style={[styles.confirmButtonText, { marginLeft: 8 }]}>
-                  Confirm
+                  {loading ? "Updating..." : "Confirm"}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -280,72 +291,72 @@ export default function Profile() {
                 </Text>
               </View>
             </View>
-            <View style={styles.sectionContainer}>
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconContainer}>
-                  <Icon name="school-outline" size={20} color="#87CEEB" />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Current Learning</Text>
-                  <Text style={styles.infoValue}>
-                    {currentLearningCount} drugs
-                  </Text>
-                </View>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIconContainer}>
+                <Icon name="school-outline" size={20} color="#87CEEB" />
               </View>
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconContainer}>
-                  <Icon
-                    name="checkmark-circle-outline"
-                    size={20}
-                    color="#87CEEB"
-                  />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Finished</Text>
-                  <Text style={styles.infoValue}>
-                    {finishedLearningCount} drugs
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconContainer}>
-                  <Icon name="trophy-outline" size={20} color="#87CEEB" />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Total Score</Text>
-                  <Text style={styles.infoValue}>{totalScore}</Text>
-                </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Current Learning</Text>
+                <Text style={styles.infoValue}>
+                  {currentLearningCount} drugs
+                </Text>
               </View>
             </View>
 
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.updateButton,
-                  profileLoading && styles.buttonDisabled,
-                ]}
-                onPress={handleUpdate}
-                disabled={profileLoading}
-              >
-                <Icon name="create-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.updateButtonText}>Update Profile</Text>
-              </TouchableOpacity>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIconContainer}>
+                <Icon
+                  name="checkmark-circle-outline"
+                  size={20}
+                  color="#87CEEB"
+                />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Finished</Text>
+                <Text style={styles.infoValue}>
+                  {finishedLearningCount} drugs
+                </Text>
+              </View>
+            </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.signOutButton,
-                  profileLoading && styles.buttonDisabled,
-                ]}
-                onPress={handleSignOut}
-                disabled={profileLoading}
-              >
-                <Icon name="log-out-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.signOutButtonText}>Sign Out</Text>
-              </TouchableOpacity>
+            <View style={styles.infoRow}>
+              <View style={styles.infoIconContainer}>
+                <Icon name="trophy-outline" size={20} color="#87CEEB" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Total Score</Text>
+                <Text style={[styles.infoValue, styles.scoreValue]}>
+                  {totalScore}
+                </Text>
+              </View>
             </View>
           </View>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[
+              styles.updateButton,
+              profileLoading && styles.buttonDisabled,
+            ]}
+            onPress={handleUpdate}
+            disabled={profileLoading}
+          >
+            <Icon name="create-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.updateButtonText}>Update Profile</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.signOutButton,
+              profileLoading && styles.buttonDisabled,
+            ]}
+            onPress={handleSignOut}
+            disabled={profileLoading}
+          >
+            <Icon name="log-out-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.signOutButtonText}>Sign Out</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -398,7 +409,18 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   sectionContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E6F3FF",
+  },
+  sectionTitleText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#4682B4",
   },
   inputContainer: {
     marginBottom: 20,
@@ -453,6 +475,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#2F4F4F",
   },
+  scoreValue: {
+    fontWeight: "700",
+    color: "#4682B4",
+  },
   buttonContainer: {
     marginTop: 20,
     gap: 12,
@@ -477,7 +503,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   signOutButton: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FF6B6B",
     borderRadius: 12,
     height: 52,
     flexDirection: "row",
@@ -487,7 +513,7 @@ const styles = StyleSheet.create({
     borderColor: "#FFE5E5",
   },
   signOutButtonText: {
-    color: "#FF6B6B",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
@@ -519,7 +545,6 @@ const styles = StyleSheet.create({
     color: "#B0C4DE",
     fontSize: 14,
     fontWeight: "500",
-    opacity: 0.5,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -527,22 +552,5 @@ const styles = StyleSheet.create({
   loadingContainer: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  debugContainer: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 20,
-  },
-  debugTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#495057",
-    marginBottom: 8,
-  },
-  debugText: {
-    fontSize: 12,
-    color: "#6c757d",
-    marginBottom: 4,
   },
 });

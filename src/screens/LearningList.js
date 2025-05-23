@@ -1,173 +1,256 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  SafeAreaView,
 } from "react-native";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import Icon from "react-native-vector-icons/Ionicons";
+import { drugCategory } from "../../resources/resource";
 
 export default function LearningList({ navigation }) {
+  const dispatch = useDispatch();
+  const [activeTab, setActiveTab] = useState("current");
+
   const currentLearning = useSelector(
     (state) => state.learning.currentLearning
   );
-  const finishedLearning = useSelector((state) => state.learning.finished);
+  const finished = useSelector((state) => state.learning.finished);
 
-  const [currentExpand, setCurrentExpand] = useState(false);
-  const [finishedExpand, setFinishedExpand] = useState(false);
+  const currentData = activeTab === "current" ? currentLearning : finished;
+  const isCurrentTab = activeTab === "current";
+  const isFinishedTab = activeTab === "finished";
 
-  const toggleCurrentExpand = () => setCurrentExpand(!currentExpand);
-  const toggleFinishedExpand = () => setFinishedExpand(!finishedExpand);
+  const getCategoryNames = (categories) => {
+    return categories
+      .map((id) => drugCategory[id]?.name || "Unknown")
+      .join(", ");
+  };
 
-  const renderCurrentHeader = () => (
+  const handleDrugPress = (drug) => {
+    navigation.navigate("LearningDetail", {
+      drug,
+      isFinished: isFinishedTab,
+    });
+  };
+
+  const renderDrugItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.sectionHeader}
-      onPress={toggleCurrentExpand}
+      style={styles.drugCard}
+      onPress={() => handleDrugPress(item)}
+      activeOpacity={0.7}
     >
-      <View style={styles.sectionTitleContainer}>
-        <Text style={styles.sectionTitle}>Current Learning</Text>
-        <Text style={styles.sectionCount}>({currentLearning.length})</Text>
+      <View style={styles.drugHeader}>
+        <View style={styles.drugTitleContainer}>
+          <Text style={styles.drugName}>{item.name}</Text>
+        </View>
       </View>
-      <Icon
-        name={currentExpand ? "remove-circle-outline" : "add-circle-outline"}
-        size={24}
-        color="#007bff"
-      />
+
+      <Text style={styles.drugFormula}>({item.molecular_formula})</Text>
+
+      <Text style={styles.drugCategories}>
+        Categories: {getCategoryNames(item.categories)}
+      </Text>
+
+      <Text style={styles.drugDescription} numberOfLines={2}>
+        {item.desc}
+      </Text>
     </TouchableOpacity>
   );
 
-  const renderFinishedHeader = () => (
-    <TouchableOpacity
-      style={styles.sectionHeader}
-      onPress={toggleFinishedExpand}
-    >
-      <View style={styles.sectionTitleContainer}>
-        <Text style={styles.sectionTitle}>Finished</Text>
-        <Text style={styles.sectionCount}>({finishedLearning.length})</Text>
-      </View>
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
       <Icon
-        name={finishedExpand ? "remove-circle-outline" : "add-circle-outline"}
-        size={24}
-        color="#007bff"
+        name={isCurrentTab ? "school-outline" : "checkmark-circle-outline"}
+        size={64}
+        color="#dee2e6"
       />
-    </TouchableOpacity>
+      <Text style={styles.emptyTitle}>
+        {isCurrentTab ? "No drugs in learning" : "No completed drugs"}
+      </Text>
+      <Text style={styles.emptySubtitle}>
+        {isCurrentTab
+          ? "Add drugs from the Drugs tab to start learning"
+          : "Complete learning drugs to see them here"}
+      </Text>
+    </View>
   );
 
-  const renderDrugItem = ({ item, section }) => (
-    <TouchableOpacity
-      style={styles.drugItem}
-      onPress={() => {
-        if (section === "current") {
-          navigation.navigate("LearningDetail", { drug: item });
-        }
-      }}
-    >
-      <Text style={styles.drugName}>{item.name}</Text>
-    </TouchableOpacity>
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, isCurrentTab && styles.activeTab]}
+          onPress={() => setActiveTab("current")}
+        >
+          <Icon
+            name="school"
+            size={18}
+            color={isCurrentTab ? "#FFFFFF" : "#6c757d"}
+          />
+          <Text style={[styles.tabText, isCurrentTab && styles.activeTabText]}>
+            Current ({currentLearning.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, isFinishedTab && styles.activeTab]}
+          onPress={() => setActiveTab("finished")}
+        >
+          <Icon
+            name="checkmark-circle"
+            size={18}
+            color={isFinishedTab ? "#FFFFFF" : "#6c757d"}
+          />
+          <Text style={[styles.tabText, isFinishedTab && styles.activeTabText]}>
+            Finished ({finished.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 
   return (
-    <View style={styles.container}>
-      {/* Current Learning Section */}
-      <View style={styles.section}>
-        {renderCurrentHeader()}
+    <SafeAreaView style={styles.container}>
+      {renderHeader()}
 
-        {currentExpand && (
-          <FlatList
-            data={currentLearning}
-            keyExtractor={(item) => item.id}
-            renderItem={(itemData) =>
-              renderDrugItem({ ...itemData, section: "current" })
-            }
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No content</Text>
-            }
-          />
-        )}
-      </View>
-
-      {/* Finished Section */}
-      <View style={styles.section}>
-        {renderFinishedHeader()}
-
-        {finishedExpand && (
-          <FlatList
-            data={finishedLearning}
-            keyExtractor={(item) => item.id}
-            renderItem={(itemData) =>
-              renderDrugItem({ ...itemData, section: "finished" })
-            }
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No content</Text>
-            }
-          />
-        )}
-      </View>
-    </View>
+      <FlatList
+        data={currentData}
+        keyExtractor={(item) => `${item.id}-${activeTab}`}
+        renderItem={renderDrugItem}
+        contentContainerStyle={[
+          styles.listContainer,
+          currentData.length === 0 && styles.emptyListContainer,
+        ]}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={renderEmptyState}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: "#f5f5f5",
+    flex: 1,
+    backgroundColor: "#f8f9fa",
+  },
+  header: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e9ecef",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 0,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
-  section: {
-    marginBottom: 20,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    overflow: "hidden",
+  activeTab: {
+    backgroundColor: "#007bff",
+    shadowColor: "#007bff",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6c757d",
+    marginLeft: 6,
+  },
+  activeTabText: {
+    color: "#FFFFFF",
+  },
+  listContainer: {
+    padding: 16,
+  },
+  emptyListContainer: {
+    flex: 1,
+  },
+  drugCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
-    width: "100%",
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
   },
-  sectionHeader: {
+  drugHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    alignItems: "flex-start",
+    marginBottom: 8,
   },
-  sectionTitleContainer: {
+  drugTitleContainer: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  sectionCount: {
-    fontSize: 16,
-    color: "#777",
-    marginLeft: 8,
-  },
-  listContent: {
-    paddingVertical: 8,
-  },
-  drugItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    width: "100%",
+    justifyContent: "space-between",
   },
   drugName: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#212529",
+    flex: 1,
   },
-  emptyText: {
-    textAlign: "center",
-    padding: 16,
-    color: "#999",
+  drugFormula: {
+    fontSize: 14,
     fontStyle: "italic",
+    color: "#6c757d",
+    marginBottom: 8,
+  },
+  drugCategories: {
+    fontSize: 13,
+    color: "#007bff",
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+  drugDescription: {
+    fontSize: 14,
+    color: "#495057",
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#6c757d",
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#adb5bd",
+    textAlign: "center",
+    lineHeight: 20,
   },
 });
