@@ -63,9 +63,7 @@ export default function Community() {
       const userData = {
         id: user.id,
         name: user.name || "Current User",
-        gender: user.gender
-          ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1)
-          : "Unknown",
+        gender: user.gender,
         totalScore: currentUserTotalScore,
         currentLearning: (currentLearning || []).length,
         finished: (finished || []).length,
@@ -167,6 +165,12 @@ export default function Community() {
     fetchCommunityRankings(true);
   };
 
+  const formatGender = (gender) => {
+    if (!gender) return "Unknown";
+    const genderStr = gender.toString().toLowerCase();
+    return genderStr.charAt(0).toUpperCase() + genderStr.slice(1);
+  };
+
   const processRankingData = (backendData, storedData) => {
     const userStats = {};
 
@@ -187,7 +191,7 @@ export default function Community() {
           userStats[userId] = {
             id: userId,
             name: userName,
-            gender: userGender.charAt(0).toUpperCase() + userGender.slice(1),
+            gender: formatGender(userGender),
             totalScore: 0,
             currentLearning: 0,
             finished: 0,
@@ -206,16 +210,14 @@ export default function Community() {
       });
     }
 
-    // Process stored user data (this persists after logout)
     storedData.forEach((userData) => {
       const userId = userData.id;
 
-      // If user already exists from backend, update with stored data if more recent
       if (userStats[userId]) {
         userStats[userId] = {
           ...userStats[userId],
           name: userData.name,
-          gender: userData.gender,
+          gender: formatGender(userData.gender),
           totalScore: Math.max(
             userStats[userId].totalScore,
             userData.totalScore
@@ -225,11 +227,10 @@ export default function Community() {
           source: "stored",
         };
       } else {
-        // Add new user from stored data
         userStats[userId] = {
           id: userId,
           name: userData.name,
-          gender: userData.gender,
+          gender: formatGender(userData.gender),
           totalScore: userData.totalScore,
           currentLearning: userData.currentLearning,
           finished: userData.finished,
@@ -239,7 +240,6 @@ export default function Community() {
       }
     });
 
-    // Add current user data if logged in (always use real-time data for current user)
     if (isLoggedIn && user?.id) {
       const currentUserTotalScore =
         totalScore ||
@@ -253,9 +253,7 @@ export default function Community() {
       userStats[user.id] = {
         id: user.id,
         name: user.name || "Current User",
-        gender: user.gender
-          ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1)
-          : "Unknown",
+        gender: formatGender(user.gender),
         totalScore: currentUserTotalScore,
         currentLearning: currentLearningCount,
         finished: finishedCount,
@@ -264,17 +262,14 @@ export default function Community() {
       };
     }
 
-    // Mark current user in all cases
     if (isLoggedIn && user?.id && userStats[user.id]) {
       userStats[user.id].isCurrentUser = true;
     }
 
-    // Convert to array and sort by total score (descending)
     const sortedUsers = Object.values(userStats).sort(
       (a, b) => b.totalScore - a.totalScore
     );
 
-    // Add rank to each user
     const rankedUsers = sortedUsers.map((user, index) => ({
       ...user,
       rank: index + 1,
