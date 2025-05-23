@@ -1,10 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { NavigationContainer } from "@react-navigation/native";
 import { Alert } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons";
-import { Provider, useSelector } from "react-redux";
+import { Provider, useSelector, useDispatch } from "react-redux";
 import { store } from "./src/redux/store";
 
 import Category from "./src/screens/Category";
@@ -17,6 +17,11 @@ import SignIn from "./src/screens/SignIn";
 import SignUp from "./src/screens/SignUp";
 import Profile from "./src/screens/Profile";
 import Community from "./src/screens/Community";
+import {
+  loadUserFromStorage,
+  selectIsLoggedIn,
+  selectAuthLoading,
+} from "./src/redux/authSlice";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -61,7 +66,7 @@ function LearningStack() {
 }
 
 function ProfileStack() {
-  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
+  const isLoggedIn = useSelector(selectIsLoggedIn);
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -78,7 +83,7 @@ function ProfileStack() {
 }
 
 function MyTab() {
-  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
+  const isLoggedIn = useSelector(selectIsLoggedIn);
   const currentLearningCount = useSelector(
     (state) => state.learning.currentLearning.length
   );
@@ -153,21 +158,47 @@ function MyTab() {
       <Tab.Screen
         name="Profile"
         component={ProfileStack}
-        options={{ headerShown: false }}
+        options={{
+          headerShown: false,
+          title: isLoggedIn ? "Profile" : "Sign In",
+        }}
       />
     </Tab.Navigator>
+  );
+}
+
+function AppNavigator() {
+  const dispatch = useDispatch();
+  const isLoggedIn = useSelector(selectIsLoggedIn);
+  const authLoading = useSelector(selectAuthLoading);
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        await dispatch(loadUserFromStorage()).unwrap();
+        console.log("✅ User loaded from storage successfully");
+      } catch (error) {
+        console.log("ℹ️ No saved user found or token expired");
+      }
+    };
+
+    initializeAuth();
+  }, [dispatch]);
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Main" component={MyTab} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
 export default function App() {
   return (
     <Provider store={store}>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Splash" component={SplashScreen} />
-          <Stack.Screen name="Main" component={MyTab} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <AppNavigator />
     </Provider>
   );
 }
